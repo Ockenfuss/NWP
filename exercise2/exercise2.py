@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+from Python import Input as Inp
 
 
 VERSION="1.0"
@@ -57,4 +58,4 @@ phin=upstream(mu,phi0)
 for i in range(10000):
     phin=upstream(mu,phin)
 simple_plot(x,phin,ax)
-plt.show()
+# plt.show()

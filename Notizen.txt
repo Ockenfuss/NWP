@@ -1,0 +1,6 @@
+
+
+
+###########Style guide###############
+Spatial arrays: [longitude, latitude]
+(This implies that the row index is the x-coordinate!)
