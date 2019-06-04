@@ -18,7 +18,8 @@ def get_constants(lat=45/180*np.pi):
 
 
 def correlation(x,y):
-    """Calculate the correlation of two matrices
+    """Calculate the correlation of two matrices.
+    Every matrix is interpreted as a collection of samples from one stochastic variable.
     
     Arguments:
         x {2darr} -- Matrix 1
@@ -82,9 +83,59 @@ def vorticity_central(u,v,dx,dy):
     """
     return derx_central(v,dx)-dery_central(u,dy)
 
+def laplace_central(f,dx,dy):
+    return derx_central(derx_central(f,dx),dx)+dery_central(dery_central(f,dy),dy)
+
 def forecast_richardson(u0,v0,dx, dy, dt ,beta=1.61e-11):
     vort0=vorticity_central(u0,v0,dx,dy)
     return -u0*dt*derx_central(vort0,dx)-v0*dt*dery_central(vort0,dy)-v0*dt*beta+vort0
+
+def extend_vorticity(vort):
+    """Extend the vorticity field like described on Sheet 5
+
+    Arguments:
+        vort {2darr} -- a scalar field
+
+    Returns:
+        2darr -- the field where every row is extended like described on Sheet 5
+    """
+    vort_int = vort.copy()
+    vort_ext = -1 * vort[:, -2:0:-1]
+    vort_int[:, [0, -1]] = 0
+    return np.concatenate((vort_int, vort_ext), axis=1)
+
+
+def invert_laplace(xi, dx, dy, extend=True):
+    """Invert the equation laplace(psi)=xi
+
+    Arguments:
+        xi {2darr} -- the laplacian of the field in need
+        dx {float} -- stepsize in longitude
+        dy {float} -- stepsize in latitude
+
+    Keyword Arguments:
+        extend {bool} -- extend xi to xi' like described on sheet 5 (default: {True})
+
+    Returns:
+        tuple(2darr) -- psi and psi_f, the fourier transform of the (extended) field
+    """
+    xi_ext = xi
+    if extend:
+        xi_ext = extend_vorticity(xi)
+    im_lapl_f = np.fft.fft2(xi_ext)
+    freq_x = np.fft.fftfreq(xi_ext.shape[0], dx / (2 * np.pi))
+    freq_y = np.fft.fftfreq(xi_ext.shape[1], dy / (2 * np.pi))
+    kx, ky = np.meshgrid(freq_x, freq_y, indexing='ij')
+    psi0_f = -1 * im_lapl_f / (kx * kx + ky * ky)
+    # the 0. coefficient is not defined by the equation! (Because we are
+    # loosing the constant offset when deriving.)
+    psi0_f[0, 0] = 10.0
+    psi0 = np.real(np.fft.ifft2(psi0_f))
+    if extend:
+        psi0 = psi0[:xi.shape[0], :xi.shape[1]]
+    return psi0, psi0_f
+
+
 
 def transformVariable(data, sort_lat, select_lat):
     data=data[0,:,:]#choose first timestep
