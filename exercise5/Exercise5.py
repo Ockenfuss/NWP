@@ -24,6 +24,36 @@ import NwpPlots as plots
 lons, lat, u0, v0, vort_real0 = nwp.readData("../Data/eraint_2019020100.nc")
 beta, dx, dy = nwp.get_constants()
 
+#Test Version for this file: returns the fourier transform as well
+def invert_laplace(xi, dx, dy, extend=True):
+    """Invert the equation laplace(psi)=xi
+
+    Arguments:
+        xi {2darr} -- the laplacian of the field in need
+        dx {float} -- stepsize in longitude
+        dy {float} -- stepsize in latitude
+
+    Keyword Arguments:
+        extend {bool} -- extend xi to xi' like described on sheet 5 (default: {True})
+
+    Returns:
+        tuple(2darr) -- psi and psi_f, the fourier transform of the (extended) field
+    """
+    xi_ext = xi
+    if extend:
+        xi_ext = nwp.extend_vorticity(xi)
+    im_lapl_f = np.fft.fft2(xi_ext)
+    freq_x = np.fft.fftfreq(xi_ext.shape[0], dx / (2 * np.pi))
+    freq_y = np.fft.fftfreq(xi_ext.shape[1], dy / (2 * np.pi))
+    kx, ky = np.meshgrid(freq_x, freq_y, indexing='ij')
+    psi0_f = -1 * im_lapl_f / (kx * kx + ky * ky)
+    # the 0. coefficient is not defined by the equation! (Because we are
+    # loosing the constant offset when deriving.)
+    psi0_f[0, 0] = 10.0
+    psi0 = np.real(np.fft.ifft2(psi0_f))
+    if extend:
+        psi0 = psi0[:xi.shape[0], :xi.shape[1]]
+    return psi0, psi0_f
 
 def Exercise_b():
     vort_calc0 = nwp.vorticity_central(u0, v0, dx, dy)
@@ -34,7 +64,7 @@ def Exercise_b():
 
     vort_calc0_f = np.fft.fft2(vort_calc0)
     vort_calc0_1 = np.real(np.fft.ifft2(vort_calc0_f))
-    psi0_1, psi0_f = nwp.invert_laplace(vort_calc0, dx, dy)
+    psi0_1, psi0_f = invert_laplace(vort_calc0, dx, dy)
     vort_calc0_2 = nwp.laplace_central(psi0_1, dx, dy)
 
     fig, ax = plt.subplots(3, 2, figsize=(14,10))
@@ -60,8 +90,8 @@ def Exercise_c_test():
             0, 1, 100), indexing='ij')[1]
 
     vort_calc0_ext = nwp.extend_vorticity(vort_calc0)
-    psi0_ext, psi0_f_ext = nwp.invert_laplace(vort_calc0_ext, dx, dy, extend=False)
-    psi0 = nwp.invert_laplace(vort_calc0, dx, dy)[0]
+    psi0_ext, psi0_f_ext = invert_laplace(vort_calc0_ext, dx, dy, extend=False)
+    psi0 = invert_laplace(vort_calc0, dx, dy)[0]
     vort_calc1 = nwp.laplace_central(psi0, dx, dy)
 
     fig, ax = plt.subplots(3, 2, figsize=(14,10))
@@ -82,8 +112,8 @@ def Exercise_c_test():
 def Exercise_c_real():
     vort_calc0 = nwp.vorticity_central(u0, v0, dx, dy)
     vort_calc0_ext = nwp.extend_vorticity(vort_calc0)
-    psi0_ext, psi0_f_ext = nwp.invert_laplace(vort_calc0_ext, dx, dy, extend=False)
-    psi0 = nwp.invert_laplace(vort_calc0, dx, dy)[0]
+    psi0_ext, psi0_f_ext = invert_laplace(vort_calc0_ext, dx, dy, extend=False)
+    psi0 = invert_laplace(vort_calc0, dx, dy)[0]
     vort_calc1 = nwp.laplace_central(psi0, dx, dy)
 
     fig, ax = plt.subplots(3, 2, figsize=(14,10))
@@ -103,7 +133,7 @@ def Exercise_c_real():
 
 def Exercise_d():
     vort_calc0 = nwp.vorticity_central(u0, v0, dx, dy)
-    psi0 = nwp.invert_laplace(vort_calc0, dx, dy)[0]
+    psi0 = invert_laplace(vort_calc0, dx, dy)[0]
 
     u1 = -1 * nwp.dery_central(psi0, dy)
     u1 = u1 - np.mean(u1) + np.mean(u0)

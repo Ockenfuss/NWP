@@ -93,8 +93,8 @@ def PlotExercise1():
     plot_colormesh(ax[1,1],vort_calc)
 
 def PlotExercise2():
-    filename0='eraint_2019020100.nc'
-    filename1='eraint_2019020106.nc'
+    filename0='../Data/eraint_2019020100.nc'
+    filename1='../Data/eraint_2019020106.nc'
     dt=6*3600
     lons, lats, u0, v0, vort_real0=readData(filename0)
     lons, lats, u1, v1, vort_real1=readData(filename1)
@@ -122,13 +122,12 @@ def PlotExercise2():
     print("Correlation of constant forecast:")
     print(correlation(vort_calc0[:,inds], vort_calc1[:,inds]))
 
-
 beta=2*np.pi*2/(3600*24)*np.cos(45/180.*np.pi)/6370000
 dx=2*np.pi*6370*np.cos(45/180*np.pi)/360*1000#longitude distance at 45lat
 dy=2*np.pi*6370/360*1000#latitude distance
 
 print(beta)
-filename='eraint_2019020100.nc'
+filename='../Data/eraint_2019020100.nc'
 lons, lats, u, v, vort_real=readData(filename)
 vort_calc=vorticity_central(u,v,dx,dy)*1e6
 
@@ -137,11 +136,6 @@ v=v[0:5,0:5]
 vort_real=vort_real[0:5,0:5]
 vort_calc=vorticity_central(u,v,dx,dy)*1e6
 vort_calc1=forecast_richardson(u,v,dx,dy,3600*6)*1e6
-print(u.round(2))
-print(v.round(2))
-print(vort_calc.round(2))
-print((vort_real*1e6).round(2))
-print(vort_calc1.round(2))
 
 #Test##
 u_test=np.array([np.arange(10)**2 for i in range(10)]).T
