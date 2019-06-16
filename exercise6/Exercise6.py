@@ -26,12 +26,13 @@ par.add_argument('infile')
 par.add_argument('-s',action='store_true')
 args=par.parse_args()
 inp=Inp.Input(args.infile,version=VERSION)
-inp.convert_type(int, "dt")
-inp.convert_type(int,"total_time_days")
-inp.convert_type(int,"total_time_hours")
+inp.convert_type(float, "dt")
+inp.convert_type(float,"total_time_days")
+inp.convert_type(float,"total_time_hours")
+inp.convert_type(int,"delay")
 inp.convert_type(int,"diffusion")
 inp.convert_type(int,"number_pictures")
-
+inp.show_data()
 
 
 
@@ -51,7 +52,7 @@ def run_barotropic_model(vort1,vort0,u1,v1,dx,dy,dt,beta,D, steps=1, return_befo
     if return_before:
         return vort2,vort0
     return vort2
-    
+
 
 
 # def Exercise3():
@@ -65,6 +66,7 @@ def main():
     
     beta, dx, dy=nwp.get_constants()
     vort0=nwp.vorticity_central(u0,v0,dx,dy)
+    vort_calc_6h=nwp.vorticity_central(u_6h,v_6h,dx,dy)
     dt=inp.get("dt")
     D=inp.get("diffusion")
     number_pictures=inp.get("number_pictures")
@@ -79,6 +81,13 @@ def main():
     total_steps=int(np.floor(total_time/dt))
     steps_per_picture=int(np.floor(total_steps/number_pictures))
     pictures=np.zeros((number_pictures,)+vort0.shape)#format[pic,lon,lat]
+
+    print("timestep [s]: "+str(dt))
+    print("total steps: "+str(total_steps))
+    print("number pictures: "+str(number_pictures))
+    print("steps per picture: "+str(steps_per_picture))
+    print("total simulated time [s]: "+str(dt*number_pictures*steps_per_picture))
+    print("Originally desired time [s]:" +str(total_time) + "(this is "+str(total_time-dt*number_pictures*steps_per_picture)+" s differnce)")
 
     vort_n=vort0*1.0
     vort_np1=vort1*1.0
@@ -102,8 +111,11 @@ def main():
         title = plt.text(0.5,1.01,"Picture "+str(i), ha="center",va="bottom", transform=ax_ani.transAxes, fontsize="large")
         im=plots.plot_colormesh(ax_ani,pictures[i].T)
         ims.append([im,title])
-    ani = animation.ArtistAnimation(fig_ani, ims, interval=30, blit=True, repeat_delay=40)
+    ani = animation.ArtistAnimation(fig_ani, ims, interval=inp.get("delay"), blit=True, repeat_delay=400)
 
+    ###Correlation
+    select=np.logical_and(lat>30,lat<60)
+    print(nwp.correlation(vort_n[:,select],vort_calc_6h[:,select]))
 
     ###Save
     if args.s:
@@ -115,8 +127,6 @@ def main():
 
 
 
-    select=np.logical_and(lat>30,lat<60)
-    print(nwp.correlation(vort_n[:,select],vort_real_24h[:,select]))
 
 
 

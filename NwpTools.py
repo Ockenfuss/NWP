@@ -54,6 +54,16 @@ def dery_central(f,dy):
     derx[:,-1]=(f_p1-f_m1)[:,-1]/(dy)
     return derx
 def laplace_central(f,dx,dy):
+    """Calculate dx^2f+dy^2f.
+    
+    Arguments:
+        f {2darr} -- A scalar field.
+        dx {float} -- The stepsize in longitudinal direction
+        dy {float} -- The stepsize in latitudinal direction
+    
+    Returns:
+        2darr -- laplace(f)
+    """
     return derx_central(derx_central(f,dx),dx)+dery_central(dery_central(f,dy),dy)
 def invert_laplace(xi, dx, dy, extend=True):
     """Invert the equation laplace(psi)=xi
