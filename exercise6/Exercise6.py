@@ -20,7 +20,7 @@ import NwpTools as nwp
 load_src("NwpPlots", "../NwpPlots.py")
 import NwpPlots as plots
 
-VERSION="1.0"
+VERSION="1.2"
 par=argparse.ArgumentParser()
 par.add_argument('infile')
 par.add_argument('-s',action='store_true')
@@ -32,6 +32,7 @@ inp.convert_type(float,"total_time_hours")
 inp.convert_type(int,"delay")
 inp.convert_type(int,"diffusion")
 inp.convert_type(int,"number_pictures")
+inp.convert_type(bool,"video")
 inp.show_data()
 
 
@@ -115,13 +116,19 @@ def main():
 
     ###Correlation
     select=np.logical_and(lat>30,lat<60)
-    print(nwp.correlation(vort_n[:,select],vort_calc_6h[:,select]))
+    correlation=nwp.correlation(vort_n[:,select],vort_calc_6h[:,select])
+    print("Correlation: " +str(correlation))
 
     ###Save
     if args.s:
         animation_path=os.path.join(inp.get("folder"),inp.get("savename"))+".mp4"
-        ani.save(animation_path)
+        results_path=os.path.join(inp.get("folder"),inp.get("savename"))+".res"
+        if inp.get("video"):
+            ani.save(animation_path)
+        if inp.get("results"):
+            np.savetxt(results_path, np.atleast_1d(correlation))
         inp.write_log(animation_path,file_ext=".log")
+
     else:
         plt.show()
 
