@@ -20,7 +20,7 @@ import NwpTools as nwp
 load_src("NwpPlots", "../NwpPlots.py")
 import NwpPlots as plots
 
-VERSION="1.2"
+VERSION="1.3"
 par=argparse.ArgumentParser()
 par.add_argument('infile')
 par.add_argument('-s',action='store_true')
@@ -35,31 +35,6 @@ inp.convert_type(int,"number_pictures")
 inp.convert_type(bool,"video")
 inp.show_data()
 
-
-
-def barotropic_forecast_equation(vort1,vort0,u1,v1,dx,dy,dt,beta,D):
-    rightside=-u1*nwp.derx_central(vort1,dx)-v1*nwp.dery_central(vort1,dy)-v1*beta+D*nwp.laplace_central(vort0,dx,dy)
-    vort2=2*dt*rightside+vort0
-    return vort2
-
-def run_barotropic_model(vort1,vort0,u1,v1,dx,dy,dt,beta,D, steps=1, return_before=False):
-    vort2=np.zeros(vort1.shape)
-    for i in range(steps):
-        vort2=barotropic_forecast_equation(vort1,vort0,u1,v1,dx,dy,dt,beta,D)
-        psi2=nwp.invert_laplace(vort2,dx,dy)
-        u1,v1=nwp.get_wind(psi2,dx,dy)
-        vort0=vort1
-        vort1=vort2
-    if return_before:
-        return vort2,vort0
-    return vort2
-
-
-
-# def Exercise3():
-
-
-
 def main():
     lons, lat, u0, v0, vort_real=nwp.readData("../Data/eraint_2019020100.nc")
     lons, lat, u_6h, v_6h, vort_real_6h=nwp.readData("../Data/eraint_2019020106.nc")
@@ -68,15 +43,18 @@ def main():
     beta, dx, dy=nwp.get_constants()
     vort0=nwp.vorticity_central(u0,v0,dx,dy)
     vort_calc_6h=nwp.vorticity_central(u_6h,v_6h,dx,dy)
+    vort_calc_24h=nwp.vorticity_central(u_24h,v_24h,dx,dy)
+    mean_u0=np.mean(u0)
     dt=inp.get("dt")
     D=inp.get("diffusion")
     number_pictures=inp.get("number_pictures")
     total_time=inp.get("total_time_days")*24*3600+inp.get("total_time_hours")*3600
 
     #Initialize: Make a single forward in time step
-    vort1=barotropic_forecast_equation(vort0,vort0,u0,v0,dx,dy,dt/2,beta,D)#for dt=6h and D=0, this should be the result from sheet 4!
+    vort1=nwp.barotropic_forecast_equation(vort0,vort0,u0,v0,dx,dy,dt/2,beta,D)#for dt=6h and D=0, this should be the result from sheet 4!
     psi1=nwp.invert_laplace(vort1,dx,dy)
     u1,v1=nwp.get_wind(psi1,dx,dy)
+    u1=u1+mean_u0
 
     ###Produce movie
     total_steps=int(np.floor(total_time/dt))
@@ -95,12 +73,13 @@ def main():
     u_np1=u1*1.0
     v_np1=v1*1.0
     for i in range(number_pictures):
-        vort_np1, vort_n=run_barotropic_model(vort_np1,vort_n,u_np1,v_np1,dx,dy,dt,beta,D,steps=steps_per_picture, return_before=True)
+        vort_np1, vort_n=nwp.run_barotropic_model(vort_np1,vort_n,u_np1,v_np1,dx,dy,dt,beta,D,steps=steps_per_picture, return_before=True)
         psi_np1=nwp.invert_laplace(vort_np1,dx,dy)
         u_np1,v_np1=nwp.get_wind(psi_np1,dx,dy)
+        u_np1=u_np1+mean_u0
         pictures[i]=vort_n
         print("calculated picture "+str(i))
-    
+
 
     ###Animation
     import matplotlib.animation as animation
@@ -116,8 +95,10 @@ def main():
 
     ###Correlation
     select=np.logical_and(lat>30,lat<60)
-    correlation=nwp.correlation(vort_n[:,select],vort_calc_6h[:,select])
-    print("Correlation: " +str(correlation))
+    correlation_6h=nwp.correlation(vort_n[:,select],vort_calc_6h[:,select])
+    correlation_24h=nwp.correlation(vort_n[:,select],vort_calc_24h[:,select])
+    print("Correlation of last field with 6h " +str(correlation_6h))
+    print("Correlation with 24h: " +str(correlation_24h))
 
     ###Save
     if args.s:
@@ -126,7 +107,7 @@ def main():
         if inp.get("video"):
             ani.save(animation_path)
         if inp.get("results"):
-            np.savetxt(results_path, np.atleast_1d(correlation))
+            np.savetxt(results_path, np.atleast_1d([correlation_6h, correlation_24h]))
         inp.write_log(animation_path,file_ext=".log")
 
     else:

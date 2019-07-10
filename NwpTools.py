@@ -141,6 +141,59 @@ def get_wind(psi,dx,dy):
 def forecast_richardson(u0,v0,dx, dy, dt ,beta=1.61e-11):
     vort0=vorticity_central(u0,v0,dx,dy)
     return -u0*dt*derx_central(vort0,dx)-v0*dt*dery_central(vort0,dy)-v0*dt*beta+vort0
+def barotropic_forecast_equation(vort1,vort0,u1,v1,dx,dy,dt,beta,D):
+    """The barotropic forecast equation to calculate the vorticity field at time 2.
+    
+    Arguments:
+        vort1 {2darr} -- vorticity field at time 1
+        vort0 {2darr} -- vorticity field at time 0
+        u1 {2darr} -- zonal wind field at time 1
+        v1 {2darr} -- meridional wind field at time 1
+        dx {scalar} -- the gridspacing in longitudinal direction
+        dy {scalar} -- the gridspacing in latitudinal direction
+        dt {scalar} -- the timestep in s
+        beta {scalar} -- the beta parameter (linear term of the expansion of the coriolis force)
+        D {scalar} -- diffusion coefficient
+    
+    Returns:
+        2darr -- the vorticity vield at time 2
+    """
+    rightside=-u1*derx_central(vort1,dx)-v1*dery_central(vort1,dy)-v1*beta+D*laplace_central(vort0,dx,dy)
+    vort2=2*dt*rightside+vort0
+    return vort2
+def run_barotropic_model(vort1,vort0,u1,v1,dx,dy,dt,beta,D, steps=1, return_before=False):
+    """Perform a forecast of the vorticity field using the barotropic vorticity equation.
+    
+    Arguments:
+        vort1 {2darr} -- vorticity field at time 1
+        vort0 {2darr} -- vorticity field at time 0
+        u1 {2darr} -- zonal wind field at time 1
+        v1 {2darr} -- meridional wind field at time 1
+        dx {scalar} -- the gridspacing in longitudinal direction
+        dy {scalar} -- the gridspacing in latitudinal direction
+        dt {scalar} -- the timestep in s
+        beta {scalar} -- the beta parameter (linear term of the expansion of the coriolis force)
+        D {scalar} -- diffusion coefficient
+    
+    Keyword Arguments:
+        steps {int} -- the number of timesteps to calculate (default: {1})
+        return_before {bool} -- return the two last vorticity fields. Necessary for restarting the barotropic model from the current state. (default: {False})
+    
+    Returns:
+        2darr -- the vorticity field by dt*steps seconds advanced.
+    """
+    vort2=np.zeros(vort1.shape)
+    mean_u1=np.mean(u1)
+    for i in range(steps):
+        vort2=barotropic_forecast_equation(vort1,vort0,u1,v1,dx,dy,dt,beta,D)
+        psi2=invert_laplace(vort2,dx,dy)
+        u1,v1=get_wind(psi2,dx,dy)
+        u1=u1+mean_u1
+        vort0=vort1
+        vort1=vort2
+    if return_before:
+        return vort2,vort0
+    return vort2
 
 ###Model setup
 def transformVariable(data, sort_lat, select_lat):
