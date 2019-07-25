@@ -6,6 +6,20 @@ from matplotlib import pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import scipy.stats as stats
 
+def load_src(name, fpath):
+    import os
+    import imp
+    p = fpath if os.path.isabs(fpath) \
+        else os.path.join(os.path.dirname(__file__), fpath)
+    return imp.load_source(name, p)
+
+
+load_src("NwpTools", "../NwpTools.py")
+import NwpTools as nwp
+load_src("NwpPlots", "../NwpPlots.py")
+import NwpPlots as plots
+
+
 def correlation(x,y):
     x_m=np.mean(x)
     y_m=np.mean(y)
@@ -101,7 +115,7 @@ def PlotExercise2():
     vort_calc0=vorticity_central(u0,v0,dx,dy)
     vort_calc1=vorticity_central(u1,v1,dx,dy)
     vort_fore=forecast_richardson(u0,v0,dx,dy,dt)
-    
+    vort_adv=nwp.adv_field_x(vort_calc0, np.mean(u0),np.mean(v0),dx,dt)
 
 
     fig, ax=plt.subplots(2,2)
@@ -121,6 +135,8 @@ def PlotExercise2():
     print(correlation(vort_fore[:,inds],vort_calc1[:,inds]))
     print("Correlation of constant forecast:")
     print(correlation(vort_calc0[:,inds], vort_calc1[:,inds]))
+    print("Correlation of constantly advected forecast:")
+    print(correlation(vort_adv[:,inds], vort_calc1[:,inds]))
 
 beta=2*np.pi*2/(3600*24)*np.cos(45/180.*np.pi)/6370000
 dx=2*np.pi*6370*np.cos(45/180*np.pi)/360*1000#longitude distance at 45lat
