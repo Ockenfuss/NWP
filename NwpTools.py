@@ -20,6 +20,18 @@ def correlation(x,y):
     E=np.sum((x-x_m)*(y-y_m))
     N=np.sqrt(np.sum(np.power((x-x_m),2))*np.sum(np.power((y-y_m),2)))
     return E/N
+def rmse(x,y):
+    """Calculate the root-mean-square-error of two sets of samples.
+    
+    Arguments:
+        x {2darr} -- first sample set
+        y {2darr} -- second sample set
+    
+    Returns:
+        float -- The RMSE of the two sets.
+    """
+    return np.sqrt(np.mean(np.power(x-y,2)))
+
 def derx_central(f,dx):
     """Derivative of the columns with periodic boundary conditions.
     
@@ -137,7 +149,26 @@ def get_wind(psi,dx,dy):
     v = derx_central(psi, dx)
     return u,v
 
-
+def adv_field_x(phi, u,v, dx, dt):
+    """Advect a field with constant velocity by shifting it in the wind direction. Periodic boundary conditions are applied.
+    
+    Arguments:
+        phi {2darr} -- the field to advect.
+        u {float} -- u component of the advection wind vector
+        v {float} -- v component of the advection wind vector
+        dx {float} -- grid spacing
+        dt {float} -- the time over which the field is advected by the given wind.
+    
+    Returns:
+        2darr -- the advected field
+    """
+    l1=phi.shape[0]
+    ind1 = np.arange(l1)
+    l2=phi.shape[1]
+    ind2 = np.arange(l2)
+    phi_adv=phi[(ind1-int(u*dt/dx))%l1,:]
+    phi_adv=phi_adv[:,(ind2-int(v*dt/dx))%l2]
+    return phi_adv
 def forecast_richardson(u0,v0,dx, dy, dt ,beta=1.61e-11):
     vort0=vorticity_central(u0,v0,dx,dy)
     return -u0*dt*derx_central(vort0,dx)-v0*dt*dery_central(vort0,dy)-v0*dt*beta+vort0
